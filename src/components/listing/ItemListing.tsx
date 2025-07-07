@@ -3,7 +3,6 @@ import { Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import ReCAPTCHA from 'react-google-recaptcha';
 import PaymentModal from '../PaymentModal';
 import VerificationFlow from '../verification/VerificationFlow';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus';
@@ -16,7 +15,6 @@ const ItemListing: React.FC = () => {
   const { needsVerification, loading: verificationLoading } = useVerificationStatus();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
   const [formData, setFormData] = useState({
@@ -90,11 +88,6 @@ const ItemListing: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!captchaValue) {
-      setError('Please complete the reCAPTCHA verification');
-      return;
-    }
 
     if (!user) {
       navigate('/signin');
@@ -404,19 +397,10 @@ const ItemListing: React.FC = () => {
                 </div>
               </div>
 
-              {/* reCAPTCHA with your actual site key */}
-              <div className="flex justify-center">
-                <ReCAPTCHA
-                  sitekey="6LevdncrAAAABez4RahDJbBL-9QJd5dmZ6WyLJh"
-                  onChange={setCaptchaValue}
-                  theme="light"
-                />
-              </div>
-
               <div className="flex justify-center">
                 <button
                   type="submit"
-                  disabled={loading || !captchaValue}
+                  disabled={loading}
                   className="bg-[#4A0E67] text-white px-8 py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50 flex items-center"
                 >
                   {loading ? (

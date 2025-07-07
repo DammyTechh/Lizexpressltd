@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import ReCAPTCHA from 'react-google-recaptcha';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 const SignUp: React.FC = () => {
@@ -12,7 +11,6 @@ const SignUp: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
@@ -26,11 +24,6 @@ const SignUp: React.FC = () => {
 
     if (!agreeToTerms) {
       setError('You must agree to the terms and conditions');
-      return;
-    }
-
-    if (!captchaValue) {
-      setError('Please complete the reCAPTCHA verification');
       return;
     }
 
@@ -138,15 +131,6 @@ const SignUp: React.FC = () => {
                 required
               />
             </div>
-
-            {/* reCAPTCHA with your actual site key */}
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                sitekey="6LevdncrAAAABez4RahDJbBL-9QJd5dmZ6WyLJh"
-                onChange={setCaptchaValue}
-                theme="light"
-              />
-            </div>
             
             <div className="flex items-center">
               <input
@@ -163,7 +147,7 @@ const SignUp: React.FC = () => {
             
             <button
               type="submit"
-              disabled={loading || !captchaValue}
+              disabled={loading}
               className="w-full bg-[#4A0E67] text-white py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50 flex items-center justify-center"
             >
               {loading ? (
