@@ -30,6 +30,8 @@ import {
   DollarSign
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import PageLoader from '../components/ui/PageLoader';
 
 interface AdminUser {
   id: string;
@@ -240,6 +242,12 @@ const AdminDashboard: React.FC = () => {
         .from('chats')
         .select('id');
 
+      // Fetch pending verifications
+      const { data: verificationsData } = await supabase
+        .from('verifications')
+        .select('id')
+        .eq('status', 'pending');
+
       // Calculate real-time stats
       const today = new Date().toISOString().split('T')[0];
       
@@ -256,7 +264,7 @@ const AdminDashboard: React.FC = () => {
         return sum + (item.estimated_cost ? item.estimated_cost * 0.05 : 0);
       }, 0) || 0;
 
-      const pendingVerifications = users.filter(user => !user.is_verified).length;
+      const pendingVerifications = verificationsData?.length || 0;
 
       setStats({
         totalUsers: users.length,
@@ -504,6 +512,10 @@ const AdminDashboard: React.FC = () => {
     { id: 'history', icon: History, label: 'History' },
     { id: 'notifications', icon: Bell, label: 'Notifications' }
   ];
+
+  if (loading) {
+    return <PageLoader message="Loading admin dashboard..." />;
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -841,103 +853,95 @@ const AdminDashboard: React.FC = () => {
 
             {/* Users List with Real Data */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#4A0E67] border-t-transparent"></div>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-6">
-                    {paginatedUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:shadow-md transition-shadow"
-                      >
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-full overflow-hidden bg-[#F7941D]">
-                            {user.avatar_url ? (
-                              <img
-                                src={user.avatar_url}
-                                alt={user.full_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-white font-bold">
-                                {user.full_name.charAt(0)}
-                              </div>
-                            )}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-6">
+                {paginatedUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg hover:shadow-md transition-shadow"
+                  >
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-[#F7941D]">
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt={user.full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                            {user.full_name.charAt(0)}
                           </div>
-                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                            user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                          }`}></div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-semibold text-gray-900 truncate">{user.full_name}</h3>
-                            {user.is_verified && <CheckCircle className="w-4 h-4 text-green-500" />}
-                          </div>
-                          <p className="text-sm text-gray-600 truncate">{user.email}</p>
-                          <div className="flex items-center space-x-4 mt-1">
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              {user.location}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {user.items_count} items • {user.chats_count} chats
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {!user.is_verified && (
-                            <button
-                              onClick={() => verifyUser(user.id)}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Verify User"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteUser(user.id)}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Delete User"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 hover:bg-white hover:bg-opacity-50 rounded-lg transition-colors">
-                            <MoreHorizontal className="w-5 h-5 text-gray-600" />
-                          </button>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                        user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      }`}></div>
+                    </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center space-x-4 p-6 border-t">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold text-gray-900 truncate">{user.full_name}</h3>
+                        {user.is_verified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{user.email}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          {user.location}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {user.items_count} items • {user.chats_count} chats
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {!user.is_verified && (
+                        <button
+                          onClick={() => verifyUser(user.id)}
+                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                          title="Verify User"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-full bg-[#4A0E67] text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#3a0b50] transition-colors"
+                        onClick={() => deleteUser(user.id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Delete User"
                       >
-                        <ChevronLeft className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
-
-                      <span className="text-sm text-gray-600">
-                        Page {currentPage} of {totalPages}
-                      </span>
-
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-full bg-[#4A0E67] text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#3a0b50] transition-colors"
-                      >
-                        <ChevronRight className="w-5 h-5" />
+                      <button className="p-2 hover:bg-white hover:bg-opacity-50 rounded-lg transition-colors">
+                        <MoreHorizontal className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
-                  )}
-                </>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-4 p-6 border-t">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-full bg-[#4A0E67] text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#3a0b50] transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-full bg-[#4A0E67] text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#3a0b50] transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
               )}
             </div>
           </>

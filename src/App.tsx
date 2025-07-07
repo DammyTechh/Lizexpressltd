@@ -2,8 +2,11 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { usePreloader } from './hooks/usePreloader';
+import Preloader from './components/Preloader';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import FeedbackWidget from './components/FeedbackWidget';
 import LandingPage from './pages/LandingPage';
 import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
@@ -34,6 +37,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function AppContent() {
   const { user } = useAuth();
+  const { isLoading } = usePreloader(2500); // Minimum 2.5 seconds loading
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -50,6 +54,11 @@ function AppContent() {
       );
     }
   }, []);
+
+  // Show preloader while loading
+  if (isLoading) {
+    return <Preloader />;
+  }
 
   return (
     <Router>
@@ -116,6 +125,7 @@ function AppContent() {
               </Routes>
             </main>
             <Footer />
+            <FeedbackWidget />
           </div>
         } />
       </Routes>

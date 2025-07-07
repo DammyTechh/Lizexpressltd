@@ -29,12 +29,12 @@ const EmailConfirmation: React.FC = () => {
 
           if (data.user) {
             setStatus('success');
-            setMessage('Email confirmed successfully! Redirecting to your dashboard...');
+            setMessage('Email confirmed successfully! Please complete your profile to continue.');
             
-            // Redirect to dashboard after 2 seconds
+            // Redirect to settings to complete profile after 3 seconds
             setTimeout(() => {
-              navigate('/dashboard');
-            }, 2000);
+              navigate('/settings');
+            }, 3000);
           }
         } else {
           throw new Error('Invalid confirmation link');
@@ -71,6 +71,17 @@ const EmailConfirmation: React.FC = () => {
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-[#4A0E67] mb-4">Email Confirmed!</h2>
             <p className="text-gray-600 mb-6">{message}</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Next Step:</strong> You'll be redirected to complete your profile. This is required before you can use all features of LizExpress.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-full bg-[#4A0E67] text-white py-2 px-4 rounded hover:bg-[#3a0b50] transition-colors"
+            >
+              Complete Profile Now
+            </button>
           </>
         )}
 

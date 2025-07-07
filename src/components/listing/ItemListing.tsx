@@ -5,14 +5,20 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ReCAPTCHA from 'react-google-recaptcha';
 import PaymentModal from '../PaymentModal';
+import VerificationFlow from '../verification/VerificationFlow';
+import { useVerificationStatus } from '../../hooks/useVerificationStatus';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import PageLoader from '../ui/PageLoader';
 
 const ItemListing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { needsVerification, loading: verificationLoading } = useVerificationStatus();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [captchaValue, setCaptchaValue] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [formData, setFormData] = useState({
     itemName: '',
     buyingPrice: '',
@@ -29,6 +35,20 @@ const ItemListing: React.FC = () => {
     'Electronics', 'Furniture', 'Computer', 'Phones', 'Clothing',
     'Cosmetics', 'Automobiles', 'Shoes', 'Jewelry', 'Real Estate', 'Others'
   ];
+
+  // Show verification flow if needed
+  if (verificationLoading) {
+    return <PageLoader message="Checking verification status..." />;
+  }
+
+  if (needsVerification && !showVerification) {
+    return (
+      <VerificationFlow
+        onComplete={() => setShowVerification(false)}
+        onSkip={() => setShowVerification(false)}
+      />
+    );
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -183,6 +203,10 @@ const ItemListing: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <PageLoader message="Creating your listing..." />;
+  }
 
   return (
     <>
@@ -380,11 +404,12 @@ const ItemListing: React.FC = () => {
                 </div>
               </div>
 
-              {/* reCAPTCHA */}
+              {/* reCAPTCHA with your actual site key */}
               <div className="flex justify-center">
                 <ReCAPTCHA
-                  sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                  sitekey="6LevdncrAAAABez4RahDJbBL-9QJd5dmZ6WyLJh"
                   onChange={setCaptchaValue}
+                  theme="light"
                 />
               </div>
 
@@ -392,9 +417,16 @@ const ItemListing: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading || !captchaValue}
-                  className="bg-[#4A0E67] text-white px-8 py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50"
+                  className="bg-[#4A0E67] text-white px-8 py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50 flex items-center"
                 >
-                  {loading ? 'PROCESSING...' : 'PROCEED TO PAYMENT'}
+                  {loading ? (
+                    <>
+                      <LoadingSpinner size="small" color="white" className="mr-2" />
+                      PROCESSING...
+                    </>
+                  ) : (
+                    'PROCEED TO PAYMENT'
+                  )}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { countries, getStatesForCountry, getAllNationalities } from '../../data/locationData';
 
 const PersonalData: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +20,17 @@ const PersonalData: React.FC = () => {
     zip_code: '',
     nationality: ''
   });
+
+  const availableStates = getStatesForCountry(formData.country);
+  const nationalities = getAllNationalities();
+
+  const handleCountryChange = (country: string) => {
+    setFormData({ 
+      ...formData, 
+      country, 
+      state: '' // Reset state when country changes
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,13 +114,16 @@ const PersonalData: React.FC = () => {
                 <label className="block text-[#4A0E67] mb-2">Country of Residence:</label>
                 <select
                   value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  onChange={(e) => handleCountryChange(e.target.value)}
                   className="w-full p-3 rounded border focus:outline-none focus:border-[#4A0E67]"
                   required
                 >
                   <option value="">Select Country</option>
-                  <option value="nigeria">Nigeria</option>
-                  {/* Add more countries */}
+                  {countries.map((country) => (
+                    <option key={country.code} value={country.name}>
+                      {country.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -122,9 +137,21 @@ const PersonalData: React.FC = () => {
                 >
                   <option value="">Select Preferred Language</option>
                   <option value="english">English</option>
+                  <option value="french">French</option>
+                  <option value="arabic">Arabic</option>
+                  <option value="swahili">Swahili</option>
                   <option value="yoruba">Yoruba</option>
                   <option value="hausa">Hausa</option>
                   <option value="igbo">Igbo</option>
+                  <option value="amharic">Amharic</option>
+                  <option value="oromo">Oromo</option>
+                  <option value="somali">Somali</option>
+                  <option value="zulu">Zulu</option>
+                  <option value="xhosa">Xhosa</option>
+                  <option value="afrikaans">Afrikaans</option>
+                  <option value="portuguese">Portuguese</option>
+                  <option value="spanish">Spanish</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
@@ -136,12 +163,18 @@ const PersonalData: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     className="w-full p-3 rounded border focus:outline-none focus:border-[#4A0E67]"
                     required
+                    disabled={!formData.country}
                   >
                     <option value="">Select State</option>
-                    <option value="lagos">Lagos</option>
-                    <option value="abuja">Abuja</option>
-                    {/* Add more states */}
+                    {availableStates.map((state) => (
+                      <option key={state} value={state}>
+                        {state}
+                      </option>
+                    ))}
                   </select>
+                  {!formData.country && (
+                    <p className="text-sm text-gray-500 mt-1">Please select a country first</p>
+                  )}
                 </div>
 
                 <div>
@@ -168,6 +201,7 @@ const PersonalData: React.FC = () => {
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
                 </select>
               </div>
 
@@ -179,9 +213,12 @@ const PersonalData: React.FC = () => {
                   className="w-full p-3 rounded border focus:outline-none focus:border-[#4A0E67]"
                   required
                 >
-                  <option value="">Select Country</option>
-                  <option value="nigeria">Nigeria</option>
-                  {/* Add more countries */}
+                  <option value="">Select Nationality</option>
+                  {nationalities.map((nationality) => (
+                    <option key={nationality} value={nationality}>
+                      {nationality}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

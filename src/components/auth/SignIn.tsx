@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import ReCAPTCHA from 'react-google-recaptcha';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
 const SignIn: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -79,20 +80,28 @@ const SignIn: React.FC = () => {
               />
             </div>
 
-            {/* reCAPTCHA */}
+            {/* reCAPTCHA with your actual site key */}
             <div className="flex justify-center">
               <ReCAPTCHA
-                sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" // Test key - replace with your actual key
+                sitekey="6LevdncrAAAABez4RahDJbBL-9QJd5dmZ6WyLJh"
                 onChange={setCaptchaValue}
+                theme="light"
               />
             </div>
             
             <button
               type="submit"
               disabled={loading || !captchaValue}
-              className="w-full bg-[#4A0E67] text-white py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50"
+              className="w-full bg-[#4A0E67] text-white py-3 rounded font-bold hover:bg-[#3a0b50] transition-colors disabled:opacity-50 flex items-center justify-center"
             >
-              {loading ? 'Signing In...' : 'LOGIN'}
+              {loading ? (
+                <>
+                  <LoadingSpinner size="small" color="white" className="mr-2" />
+                  Signing In...
+                </>
+              ) : (
+                'LOGIN'
+              )}
             </button>
             
             <div className="text-center space-y-4">
