@@ -33,7 +33,7 @@ const Preloader: React.FC = () => {
               {/* Logo */}
               <div className="text-center">
                 <div className="text-2xl font-bold text-[#4A0E67] leading-tight">
-                  Liz
+                  LIZ
                 </div>
                 <div className="text-2xl font-bold text-[#F7941D] leading-tight -mt-1">
                   Express
@@ -53,7 +53,7 @@ const Preloader: React.FC = () => {
         {/* Brand Text */}
         <div className="mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 animate-fade-in-up">
-            LizExpress
+            LIZExpress
           </h1>
           <p className="text-xl text-white/90 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
             Swap what you have for what you need!

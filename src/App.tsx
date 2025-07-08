@@ -10,6 +10,8 @@ import FeedbackWidget from './components/FeedbackWidget';
 import LandingPage from './pages/LandingPage';
 import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import PersonalData from './components/auth/PersonalData';
 import IdVerification from './components/auth/IdVerification';
 import ItemListing from './components/listing/ItemListing';
@@ -76,6 +78,8 @@ function AppContent() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/signup" element={<SignUp />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/browse" element={<Browse />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/items/:id" element={<ItemDetails />} />

@@ -21,7 +21,7 @@ const PageLoader: React.FC<PageLoaderProps> = ({
         <div className="mb-6">
           <div className="w-16 h-16 bg-[#4A0E67] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <div className="text-white font-bold text-sm text-center leading-tight">
-              Liz<br />Express
+              LIZ<br />Express
             </div>
           </div>
         </div>

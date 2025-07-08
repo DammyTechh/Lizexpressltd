@@ -21,15 +21,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Set a timeout for the profile fetch
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+      );
+
+      const fetchPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
       if (error) {
         if (error.code === 'PGRST116') {
-          // No profile found, create one
+          // No profile found, create one quickly
           const { data: newProfile, error: createError } = await supabase
             .from('users')
             .insert({
@@ -63,12 +70,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const setupAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Quick session check with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 5000)
+        );
+
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
         
         if (mounted) {
           setUser(session?.user ?? null);
           if (session?.user) {
-            await fetchProfile(session.user.id);
+            // Don't wait for profile fetch to complete
+            fetchProfile(session.user.id).catch(console.error);
           }
           setLoading(false);
         }
@@ -88,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          fetchProfile(session.user.id).catch(console.error);
         } else {
           setProfile(null);
         }
@@ -118,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email, 
         password,
         options: {
-          emailRedirectTo: `https://lizexpressltd.com/email-confirmation`
+          emailRedirectTo: `${window.location.origin}/email-confirmation`
         }
       });
       if (error) throw error;
@@ -158,7 +172,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
-      await fetchProfile(user.id);
+      // Update local state immediately
+      setProfile(prev => prev ? { ...prev, ...data } : null);
+      
+      // Fetch fresh data in background
+      fetchProfile(user.id).catch(console.error);
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;

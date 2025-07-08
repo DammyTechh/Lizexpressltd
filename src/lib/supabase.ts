@@ -11,32 +11,36 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Create the Supabase client with additional options for better error handling
+// Create the Supabase client with optimized settings for production
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
   global: {
     headers: {
-      'x-application-name': 'swap-app'
+      'x-application-name': 'lizexpress-app'
     }
   },
   db: {
     schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2
+    }
   }
 });
 
-// Test the connection and log any errors
+// Simple connection test without blocking
 supabase.auth.getSession()
   .then(() => {
-    console.log('Successfully connected to Supabase');
+    console.log('✅ Supabase connected successfully');
   })
   .catch(error => {
-    console.error('Supabase connection test failed:', error);
-    // Throw the error to make it visible in the browser console
-    throw new Error(`Failed to connect to Supabase: ${error.message}`);
+    console.warn('⚠️ Supabase connection warning:', error.message);
   });
 
 export type Profile = {
@@ -52,6 +56,7 @@ export type Profile = {
   zip_code: string | null;
   nationality: string | null;
   is_verified: boolean;
+  verification_submitted: boolean;
 };
 
 export type Item = {

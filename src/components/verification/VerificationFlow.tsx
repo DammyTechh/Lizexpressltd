@@ -59,23 +59,36 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
   const uploadFile = async (file: File, type: string) => {
     if (!user) throw new Error('User not authenticated');
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/verification/${type}_${Date.now()}.${fileExt}`;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const fileName = `${user.id}/verification/${type}_${timestamp}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
-      .from('verification')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
+      // Add timeout to prevent hanging
+      const uploadPromise = supabase.storage
+        .from('verification')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-    if (error) throw error;
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout')), 30000)
+      );
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('verification')
-      .getPublicUrl(data.path);
+      const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
 
-    return publicUrl;
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('verification')
+        .getPublicUrl(data.path);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Verification upload error:', error);
+      throw error;
+    }
   };
 
   const handleNext = async () => {
@@ -177,7 +190,10 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#4A0E67] flex items-center justify-center">
-        <LoadingSpinner size="large" color="white" />
+        <div className="text-center">
+          <LoadingSpinner size="large" color="white" />
+          <p className="mt-4 text-white font-semibold">Completing verification...</p>
+        </div>
       </div>
     );
   }

@@ -7,7 +7,6 @@ import PaymentModal from '../PaymentModal';
 import VerificationFlow from '../verification/VerificationFlow';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import PageLoader from '../ui/PageLoader';
 
 const ItemListing: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +35,11 @@ const ItemListing: React.FC = () => {
 
   // Show verification flow if needed
   if (verificationLoading) {
-    return <PageLoader message="Checking verification status..." />;
+    return (
+      <div className="min-h-screen bg-[#4A0E67] flex items-center justify-center">
+        <LoadingSpinner size="large" color="white" />
+      </div>
+    );
   }
 
   if (needsVerification && !showVerification) {
@@ -70,20 +73,32 @@ const ItemListing: React.FC = () => {
   };
 
   const uploadFile = async (file: File, path: string) => {
-    const { data, error } = await supabase.storage
-      .from('items')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-    
-    if (error) throw error;
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('items')
-      .getPublicUrl(data.path);
-    
-    return publicUrl;
+    try {
+      // Add timeout to prevent hanging
+      const uploadPromise = supabase.storage
+        .from('items')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout')), 30000)
+      );
+
+      const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('items')
+        .getPublicUrl(data.path);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,7 +151,7 @@ const ItemListing: React.FC = () => {
         location = `${lat},${lng}`;
       }
 
-      // Upload images
+      // Upload images with timeout protection
       const imageUrls: string[] = [];
       for (let i = 0; i < formData.images.length; i++) {
         const file = formData.images[i];
@@ -198,7 +213,14 @@ const ItemListing: React.FC = () => {
   };
 
   if (loading) {
-    return <PageLoader message="Creating your listing..." />;
+    return (
+      <div className="min-h-screen bg-[#4A0E67] flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="large" color="white" />
+          <p className="mt-4 text-white font-semibold">Creating your listing...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

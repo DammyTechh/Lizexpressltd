@@ -55,23 +55,48 @@ const Settings: React.FC = () => {
       setUploading(true);
       setError('');
 
+      // Create unique filename with timestamp
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
+      const timestamp = Date.now();
+      const fileName = `${user.id}/avatar_${timestamp}.${fileExt}`;
 
-      const { data, error: uploadError } = await supabase.storage
+      // Quick cleanup of old avatars (don't wait for it)
+      supabase.storage
+        .from('avatars')
+        .list(`${user.id}/`)
+        .then(({ data: existingFiles }) => {
+          if (existingFiles && existingFiles.length > 0) {
+            const filesToDelete = existingFiles.map(file => `${user.id}/${file.name}`);
+            supabase.storage.from('avatars').remove(filesToDelete);
+          }
+        })
+        .catch(() => {}); // Ignore cleanup errors
+
+      // Upload new avatar with timeout
+      const uploadPromise = supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: false
         });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout')), 30000)
+      );
+
+      const { data, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as any;
 
       if (uploadError) throw uploadError;
 
+      // Get public URL with cache busting
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(data.path);
 
-      await updateProfile({ avatar_url: publicUrl });
+      // Add cache busting parameter
+      const avatarUrl = `${publicUrl}?t=${timestamp}`;
+      
+      await updateProfile({ avatar_url: avatarUrl });
       setSuccess('Profile picture updated successfully!');
       
       setTimeout(() => setSuccess(''), 3000);
@@ -142,6 +167,10 @@ const Settings: React.FC = () => {
                     src={profile.avatar_url}
                     alt="Profile"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback if image fails to load
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-[#4A0E67] flex items-center justify-center">
