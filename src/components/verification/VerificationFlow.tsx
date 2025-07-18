@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, X, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Upload, X, CheckCircle, AlertCircle, ArrowRight, ArrowLeft
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import LoadingSpinner from '../ui/LoadingSpinner';
@@ -26,6 +28,11 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
     selfie: ''
   });
 
+  const [cameraActive, setCameraActive] = useState(false);
+  const [selfieCaptured, setSelfieCaptured] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const steps = [
     { id: 1, title: 'Proof of Identity', type: 'identity', color: '#4A0E67' },
     { id: 2, title: 'Proof of Address', type: 'address', color: '#F7941D' },
@@ -34,10 +41,73 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
 
   const currentStepData = steps.find(step => step.id === currentStep);
 
+  useEffect(() => {
+    if (currentStepData?.type === 'selfie' && !selfieCaptured) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+
+    return () => {
+      stopCamera();
+    };
+  }, [currentStepData?.type]);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setCameraActive(true);
+      }
+    } catch (err) {
+      setError('Unable to access camera. Please allow camera permissions.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const captureSelfie = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      const width = videoRef.current.videoWidth;
+      const height = videoRef.current.videoHeight;
+
+      canvasRef.current.width = width;
+      canvasRef.current.height = height;
+      context?.drawImage(videoRef.current, 0, 0, width, height);
+
+      canvasRef.current.toBlob(blob => {
+        if (blob) {
+          const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+          setFiles(prev => ({
+            ...prev,
+            selfie: file
+          }));
+          setSelfieCaptured(true);
+          stopCamera();
+        }
+      }, 'image/jpeg');
+    }
+  };
+
+  const retakeSelfie = () => {
+    setSelfieCaptured(false);
+    setFiles(prev => ({ ...prev, selfie: null }));
+    startCamera();
+  };
+
   const handleFileUpload = (type: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
       if (!file.type.startsWith('image/')) {
         setError('Please select an image file');
         return;
@@ -64,20 +134,15 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
       const timestamp = Date.now();
       const fileName = `${user.id}/verification/${type}_${timestamp}.${fileExt}`;
 
-      // Add timeout to prevent hanging
       const uploadPromise = supabase.storage
         .from('verification')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Upload timeout')), 30000)
       );
 
       const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
-
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
@@ -96,7 +161,7 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
     const currentFile = files[currentType];
 
     if (!currentFile) {
-      setError('Please upload a file to continue');
+      setError('Please capture or upload a file to continue');
       return;
     }
 
@@ -126,7 +191,6 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
     try {
       setLoading(true);
 
-      // Create verification record
       const { error: verificationError } = await supabase
         .from('verifications')
         .insert({
@@ -140,18 +204,14 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
 
       if (verificationError) throw verificationError;
 
-      // Update user profile to mark verification as submitted
       await updateProfile({ verification_submitted: true });
 
-      // Create notification
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: user!.id,
-          type: 'verification_submitted',
-          title: 'Verification Submitted',
-          content: 'Your verification documents have been submitted for review. You will be notified once approved.'
-        });
+      await supabase.from('notifications').insert({
+        user_id: user!.id,
+        type: 'verification_submitted',
+        title: 'Verification Submitted',
+        content: 'Your verification documents have been submitted for review. You will be notified once approved.'
+      });
 
       onComplete();
     } catch (err: any) {
@@ -172,16 +232,20 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
       ...prev,
       [type]: null
     }));
+
+    if (type === 'selfie') {
+      setSelfieCaptured(false);
+    }
   };
 
   const getStepDescription = (type: string) => {
     switch (type) {
       case 'identity':
-        return 'Upload Any Verified means of ID (National/State ID, Drivers\' Licence, BVN, Voters\' Card, etc)';
+        return 'Upload Verified ID (National/State ID, Drivers\' Licence, Voter Card, etc)';
       case 'address':
         return 'Upload Utility Bill or Bank Statement';
       case 'selfie':
-        return 'Upload Passport Photograph/Profile Picture';
+        return 'Capture a live selfie with a clear face and good lighting.';
       default:
         return '';
     }
@@ -207,11 +271,9 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
             <div className="flex items-center space-x-2">
               {steps.map((step, index) => (
                 <React.Fragment key={step.id}>
-                  <span 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                      step.id <= currentStep ? 'bg-[#4A0E67]' : 'bg-gray-300'
-                    }`}
-                  >
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                    step.id <= currentStep ? 'bg-[#4A0E67]' : 'bg-gray-300'
+                  }`}>
                     {step.id < currentStep ? <CheckCircle size={16} /> : step.id}
                   </span>
                   {index < steps.length - 1 && (
@@ -238,44 +300,61 @@ const VerificationFlow: React.FC<VerificationFlowProps> = ({ onComplete, onSkip 
             </p>
 
             <div className="max-w-md mx-auto">
-              <label className="cursor-pointer block">
-                <div 
-                  className="border-2 border-dashed rounded-lg p-8 hover:bg-gray-50 transition-colors"
-                  style={{ borderColor: currentStepData?.color }}
-                >
-                  {files[currentStepData?.type as keyof typeof files] ? (
-                    <div className="space-y-4">
-                      <CheckCircle size={48} className="mx-auto text-green-500" />
-                      <p className="text-sm font-medium">
-                        {files[currentStepData?.type as keyof typeof files]?.name}
-                      </p>
+              {currentStepData?.type === 'selfie' ? (
+                <div className="space-y-4">
+                  {!selfieCaptured ? (
+                    <>
+                      <video ref={videoRef} className="rounded-md border w-full" autoPlay muted />
                       <button
-                        type="button"
-                        onClick={() => removeFile(currentStepData?.type || '')}
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        onClick={captureSelfie}
+                        className="px-6 py-2 bg-[#4A0E67] text-white rounded hover:bg-[#3a0b50]"
                       >
-                        Remove file
+                        Capture Selfie
                       </button>
-                    </div>
+                      <canvas ref={canvasRef} className="hidden" />
+                    </>
                   ) : (
-                    <div>
-                      <Upload 
-                        className="mx-auto mb-2" 
-                        size={32} 
-                        style={{ color: currentStepData?.color }} 
-                      />
-                      <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
-                      <p className="text-xs text-gray-400 mt-1">.jpg, .png (max 5MB)</p>
-                    </div>
+                    <>
+                      <p className="text-green-600 font-semibold">Selfie captured.</p>
+                      <button onClick={retakeSelfie} className="text-sm text-blue-500 hover:underline">
+                        Retake Selfie
+                      </button>
+                    </>
                   )}
                 </div>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".jpg,.png,.jpeg"
-                  onChange={(e) => handleFileUpload(currentStepData?.type || '', e)}
-                />
-              </label>
+              ) : (
+                <label className="cursor-pointer block">
+                  <div className="border-2 border-dashed rounded-lg p-8 hover:bg-gray-50 transition-colors" style={{ borderColor: currentStepData?.color }}>
+                    {files[currentStepData?.type as keyof typeof files] ? (
+                      <div className="space-y-4">
+                        <CheckCircle size={48} className="mx-auto text-green-500" />
+                        <p className="text-sm font-medium">
+                          {files[currentStepData?.type as keyof typeof files]?.name}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(currentStepData?.type || '')}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Remove file
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Upload className="mx-auto mb-2" size={32} style={{ color: currentStepData?.color }} />
+                        <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
+                        <p className="text-xs text-gray-400 mt-1">.jpg, .png (max 5MB)</p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".jpg,.png,.jpeg"
+                    onChange={(e) => handleFileUpload(currentStepData?.type || '', e)}
+                  />
+                </label>
+              )}
             </div>
           </div>
 

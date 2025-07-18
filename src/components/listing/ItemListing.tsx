@@ -119,8 +119,8 @@ const ItemListing: React.FC = () => {
       return;
     }
 
-    // Show payment modal before proceeding
-    setShowPaymentModal(true);
+    // Skip payment modal and proceed directly to item creation
+    await handlePaymentSuccess();
   };
 
   const handlePaymentSuccess = async () => {
@@ -270,15 +270,6 @@ const ItemListing: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[#4A0E67] mb-2">Buying Price (₦)</label>
-                  <input
-                    type="number"
-                    className="w-full p-3 rounded border focus:outline-none focus:border-[#4A0E67]"
-                    value={formData.buyingPrice}
-                    onChange={(e) => setFormData({ ...formData, buyingPrice: e.target.value })}
-                  />
-                </div>
 
                 <div>
                   <label className="block text-[#4A0E67] mb-2">Estimated Cost Value (₦) *</label>
@@ -295,7 +286,7 @@ const ItemListing: React.FC = () => {
               <div>
                 <label className="block text-[#4A0E67] mb-2">Item Condition *</label>
                 <div className="flex space-x-4">
-                  {['Brand New', 'Fairly Used', 'Well Used'].map((condition) => (
+                  {['Brand New', 'Fairly Used'].map((condition) => (
                     <label key={condition} className="flex items-center">
                       <input
                         type="radio"
@@ -428,10 +419,10 @@ const ItemListing: React.FC = () => {
                   {loading ? (
                     <>
                       <LoadingSpinner size="small" color="white" className="mr-2" />
-                      PROCESSING...
+                      CREATING LISTING...
                     </>
                   ) : (
-                    'PROCEED TO PAYMENT'
+                    'CREATE LISTING'
                   )}
                 </button>
               </div>
